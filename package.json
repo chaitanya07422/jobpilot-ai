@@ -37,9 +37,7 @@
     "tailwindcss": "^4.3.1",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.12"
-  },
-  "optionalDependencies": {
+    "vite": "^8.0.12",
     "@emnapi/core": "1.11.1",
     "@emnapi/runtime": "1.11.1"
   },
