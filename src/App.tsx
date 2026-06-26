@@ -4,6 +4,10 @@ import { useAuthStore } from '@/store/authStore'
 import { PageShell } from '@/components/layout/PageShell'
 import Login from '@/pages/Login'
 import Register from '@/pages/Register'
+import VerifyEmail from '@/pages/VerifyEmail'
+import ForgotPassword from '@/pages/ForgotPassword'
+import ResetPassword from '@/pages/ResetPassword'
+import AuthCallback from '@/pages/AuthCallback'
 import Dashboard from '@/pages/Dashboard'
 import Jobs from '@/pages/Jobs'
 import JobDetail from '@/pages/JobDetail'
@@ -62,6 +66,34 @@ export default function App() {
                 <Register />
               </PublicRoute>
             }
+          />
+          <Route
+            path="/verify-email"
+            element={
+              <PublicRoute>
+                <VerifyEmail />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <PublicRoute>
+                <ForgotPassword />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/reset-password"
+            element={
+              <PublicRoute>
+                <ResetPassword />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/auth/callback"
+            element={<AuthCallback />}
           />
           <Route
             element={

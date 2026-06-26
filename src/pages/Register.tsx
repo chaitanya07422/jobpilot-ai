@@ -1,33 +1,65 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Zap, User, Mail, Lock, ArrowRight } from 'lucide-react'
+import { authApi } from '@/api/auth.api'
+import { ApiError } from '@/api/client'
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 import { useAuthStore } from '@/store/authStore'
 import { AuthShell } from '@/components/layout/PageShell'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import CheckEmail from '@/pages/CheckEmail'
 
 export default function Register() {
-  const [name, setName] = useState('Chaitanya')
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendMessage, setResendMessage] = useState('')
   const register = useAuthStore((s) => s.register)
-  const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
     try {
-      const ok = await register(name, email, password)
-      if (ok) navigate('/dashboard')
-      else setError('Registration failed')
-    } catch {
-      setError('Registration failed. Please try again.')
+      await register(name, email, password)
+      setRegisteredEmail(email)
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : 'Registration failed. Please try again.',
+      )
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleResend = async () => {
+    if (!registeredEmail) return
+    setResendLoading(true)
+    setResendMessage('')
+    try {
+      await authApi.resendVerification(registeredEmail)
+      setResendMessage('Verification email sent.')
+    } catch {
+      setResendMessage('Could not resend. Try again later.')
+    } finally {
+      setResendLoading(false)
+    }
+  }
+
+  if (registeredEmail) {
+    return (
+      <CheckEmail
+        email={registeredEmail}
+        onResend={handleResend}
+        resendLoading={resendLoading}
+        resendMessage={resendMessage}
+      />
+    )
   }
 
   return (
@@ -42,6 +74,15 @@ export default function Register() {
         </div>
 
         <Card>
+          <div className="space-y-4">
+            <GoogleSignInButton />
+
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted">or</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="text-xs font-medium text-muted mb-1.5 block">Full Name</label>
@@ -92,6 +133,7 @@ export default function Register() {
               Create Account <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
+          </div>
 
           <p className="text-center text-sm text-muted mt-6">
             Already have an account?{' '}

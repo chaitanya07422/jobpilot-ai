@@ -1,6 +1,9 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Zap, Mail, Lock, ArrowRight } from 'lucide-react'
+import { authApi } from '@/api/auth.api'
+import { ApiError } from '@/api/client'
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 import { useAuthStore } from '@/store/authStore'
 import { AuthShell } from '@/components/layout/PageShell'
 import { Button } from '@/components/ui/Button'
@@ -11,21 +14,55 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
+  const [resendLoading, setResendLoading] = useState(false)
   const login = useAuthStore((s) => s.login)
   const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const successMessage = (location.state as { message?: string } | null)?.message
+
+  useEffect(() => {
+    if (searchParams.get('error') === 'google_auth_failed') {
+      const reason = searchParams.get('reason')
+      setError(
+        reason
+          ? `Google sign in failed: ${decodeURIComponent(reason)}`
+          : 'Google sign in failed. Please try again.',
+      )
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setUnverifiedEmail(null)
     try {
-      const ok = await login(email, password)
-      if (ok) navigate('/dashboard')
-      else setError('Invalid credentials')
-    } catch {
-      setError('Login failed. Please try again.')
+      await login(email, password)
+      navigate('/dashboard')
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setError('Please verify your email before signing in.')
+        setUnverifiedEmail(email)
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Login failed. Please try again.')
+      }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResend = async () => {
+    if (!unverifiedEmail) return
+    setResendLoading(true)
+    try {
+      await authApi.resendVerification(unverifiedEmail)
+      setError('Verification email sent. Check your inbox.')
+    } catch {
+      setError('Could not resend verification email.')
+    } finally {
+      setResendLoading(false)
     }
   }
 
@@ -41,6 +78,15 @@ export default function Login() {
         </div>
 
         <Card>
+          <div className="space-y-4">
+            <GoogleSignInButton />
+
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted">or</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="text-xs font-medium text-muted mb-1.5 block">Email</label>
@@ -57,7 +103,12 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-muted mb-1.5 block">Password</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-medium text-muted">Password</label>
+                <Link to="/forgot-password" className="text-xs text-cyan hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
               <div className="flex items-center gap-2 rounded-lg border border-border bg-panel-secondary px-3 py-2">
                 <Lock className="h-4 w-4 text-muted shrink-0" />
                 <input
@@ -70,12 +121,27 @@ export default function Login() {
               </div>
             </div>
 
+            {successMessage && <p className="text-sm text-green">{successMessage}</p>}
+
             {error && <p className="text-sm text-red">{error}</p>}
+
+            {unverifiedEmail && (
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                loading={resendLoading}
+                onClick={handleResend}
+              >
+                Resend verification email
+              </Button>
+            )}
 
             <Button type="submit" className="w-full" loading={loading}>
               Sign In <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
+          </div>
 
           <p className="text-center text-sm text-muted mt-6">
             Don&apos;t have an account?{' '}

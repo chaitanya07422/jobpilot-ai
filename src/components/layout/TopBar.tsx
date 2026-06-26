@@ -65,7 +65,7 @@ export function TopBar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan/10 border border-cyan/20 text-xs font-bold text-cyan">
             {user?.name?.charAt(0) ?? 'U'}
           </div>
-          <Button variant="ghost" size="icon" onClick={logout} aria-label="Logout">
+          <Button variant="ghost" size="icon" onClick={() => void logout()} aria-label="Logout">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
