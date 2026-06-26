@@ -1,5 +1,4 @@
 # JobPilot AI
-
 AI-powered job automation platform frontend. Discover backend engineering roles, get resume-based match scores, preview opportunities, and unlock auto-apply with a subscription — all with a modern dark SaaS UI inspired by Linear, Vercel, and Cursor.
 
 > **Note:** This is a **frontend-only** project. All data is mocked locally. No backend connection is required to run or demo the app.
