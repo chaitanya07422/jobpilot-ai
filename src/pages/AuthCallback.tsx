@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { XCircle, Zap } from 'lucide-react'
 import { authApi } from '@/api/auth.api'
+import { sessionToken } from '@/lib/session-token'
 import { useAuthStore } from '@/store/authStore'
 import { AuthShell } from '@/components/layout/PageShell'
 import { Card } from '@/components/ui/Card'
@@ -23,8 +24,10 @@ export default function AuthCallback() {
       return
     }
 
+    sessionToken.set(accessToken)
+
     authApi
-      .me(accessToken)
+      .me()
       .then(({ user }) => {
         setSession(accessToken, user)
         window.history.replaceState(null, '', window.location.pathname)

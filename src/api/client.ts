@@ -1,4 +1,9 @@
 import { delay } from '@/lib/utils'
+import {
+  notifySessionExpired,
+  notifyTokenRefreshed,
+  sessionToken,
+} from '@/lib/session-token'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
@@ -21,20 +26,65 @@ interface ApiEnvelope<T> {
   error?: { code: string; message: string }
 }
 
+export type ApiFetchOptions = RequestInit & {
+  accessToken?: string
+  skipAuthRetry?: boolean
+}
+
+let refreshPromise: Promise<string | null> | null = null
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+        })
+
+        const body = (await res.json()) as ApiEnvelope<{ accessToken: string }>
+
+        if (!res.ok || !body.success || !body.data?.accessToken) {
+          notifySessionExpired()
+          return null
+        }
+
+        const token = body.data.accessToken
+        sessionToken.set(token)
+        notifyTokenRefreshed(token)
+        return token
+      } catch {
+        notifySessionExpired()
+        return null
+      } finally {
+        refreshPromise = null
+      }
+    })()
+  }
+
+  return refreshPromise
+}
+
+async function parseResponse<T>(res: Response): Promise<ApiEnvelope<T>> {
+  return (await res.json()) as ApiEnvelope<T>
+}
+
 export async function apiFetch<T>(
   path: string,
-  options?: RequestInit & { accessToken?: string },
+  options?: ApiFetchOptions,
 ): Promise<T> {
+  const token = options?.accessToken ?? sessionToken.get()
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options?.headers as Record<string, string>),
   }
 
-  if (options?.accessToken) {
-    headers.Authorization = `Bearer ${options.accessToken}`
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
 
-  const { accessToken: _, ...fetchOptions } = options ?? {}
+  const { accessToken: _, skipAuthRetry, ...fetchOptions } = options ?? {}
 
   const res = await fetch(`${API_URL}/api/v1${path}`, {
     credentials: 'include',
@@ -42,7 +92,19 @@ export async function apiFetch<T>(
     headers,
   })
 
-  const body = (await res.json()) as ApiEnvelope<T>
+  if (res.status === 401 && !skipAuthRetry) {
+    const newToken = await refreshAccessToken()
+
+    if (newToken) {
+      return apiFetch<T>(path, {
+        ...options,
+        accessToken: newToken,
+        skipAuthRetry: true,
+      })
+    }
+  }
+
+  const body = await parseResponse<T>(res)
 
   if (!res.ok || !body.success) {
     throw new ApiError(

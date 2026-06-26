@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AuthBootstrap } from '@/components/auth/AuthBootstrap'
 import { useAuthStore } from '@/store/authStore'
+import { PageLoader } from '@/components/ui/Loader'
 import { PageShell } from '@/components/layout/PageShell'
 import Login from '@/pages/Login'
 import Register from '@/pages/Register'
@@ -29,27 +31,34 @@ const queryClient = new QueryClient({
 })
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const authReady = useAuthStore((s) => s.authReady)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  if (!authReady) return <PageLoader />
   if (!isAuthenticated) return <Navigate to="/login" replace />
   return <>{children}</>
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
+  const authReady = useAuthStore((s) => s.authReady)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  if (!authReady) return <PageLoader />
   if (isAuthenticated) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 
 function RootRedirect() {
+  const authReady = useAuthStore((s) => s.authReady)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  if (!authReady) return <PageLoader />
   return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />
 }
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
+      <AuthBootstrap>
+        <BrowserRouter>
+          <Routes>
           <Route path="/" element={<RootRedirect />} />
           <Route
             path="/login"
@@ -115,7 +124,8 @@ export default function App() {
           </Route>
           <Route path="*" element={<RootRedirect />} />
         </Routes>
-      </BrowserRouter>
+        </BrowserRouter>
+      </AuthBootstrap>
     </QueryClientProvider>
   )
 }
