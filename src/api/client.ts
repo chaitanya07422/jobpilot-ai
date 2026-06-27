@@ -117,6 +117,63 @@ export async function apiFetch<T>(
   return body.data as T
 }
 
+export async function apiUpload<T>(
+  path: string,
+  file: File,
+  fieldName = 'file',
+): Promise<T> {
+  const token = sessionToken.get()
+  const formData = new FormData()
+  formData.append(fieldName, file)
+
+  const headers: Record<string, string> = {}
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const res = await fetch(`${API_URL}/api/v1${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+    body: formData,
+  })
+
+  if (res.status === 401) {
+    const newToken = await refreshAccessToken()
+    if (newToken) {
+      const retryForm = new FormData()
+      retryForm.append(fieldName, file)
+      const retryRes = await fetch(`${API_URL}/api/v1${path}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${newToken}` },
+        body: retryForm,
+      })
+      const retryBody = await parseResponse<T>(retryRes)
+      if (!retryRes.ok || !retryBody.success) {
+        throw new ApiError(
+          retryBody.error?.message ?? 'Upload failed',
+          retryRes.status,
+          retryBody.error?.code,
+        )
+      }
+      return retryBody.data as T
+    }
+  }
+
+  const body = await parseResponse<T>(res)
+
+  if (!res.ok || !body.success) {
+    throw new ApiError(
+      body.error?.message ?? 'Upload failed',
+      res.status,
+      body.error?.code,
+    )
+  }
+
+  return body.data as T
+}
+
 /** @deprecated Use apiFetch for real API calls */
 export async function mockFetch<T>(
   data: T,

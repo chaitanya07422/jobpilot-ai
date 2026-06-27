@@ -5,6 +5,7 @@ export const mockResumes: Resume[] = [
     id: 'resume-1',
     name: 'Backend Resume',
     fileName: 'chaitanya_backend_resume.pdf',
+    url: '#',
     skillsExtracted: [
       'Go',
       'Python',
@@ -25,6 +26,7 @@ export const mockResumes: Resume[] = [
     id: 'resume-2',
     name: 'AI Resume',
     fileName: 'chaitanya_ai_ml_resume.pdf',
+    url: '#',
     skillsExtracted: [
       'Python',
       'PyTorch',
@@ -45,6 +47,7 @@ export const mockResumes: Resume[] = [
     id: 'resume-3',
     name: 'Cloud Resume',
     fileName: 'chaitanya_cloud_devops_resume.pdf',
+    url: '#',
     skillsExtracted: [
       'Kubernetes',
       'Terraform',

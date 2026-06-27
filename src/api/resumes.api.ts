@@ -1,96 +1,49 @@
-import { mockFetch } from '@/api/client'
-import { isSubscribed } from '@/lib/pipeline'
-import { useAuthStore } from '@/store/authStore'
-import { mockResumes } from '@/mock/resumes'
+import { apiFetch, apiUpload } from '@/api/client'
+import { sessionToken } from '@/lib/session-token'
 import type { Resume } from '@/types/resume.types'
 
-const DEFAULT_EXTRACTED_SKILLS = [
-  'Go',
-  'Python',
-  'PostgreSQL',
-  'Redis',
-  'Kafka',
-  'Microservices',
-  'REST APIs',
-  'Docker',
-  'AWS',
-]
+let cachedResumeCount = 0
 
-const STORAGE_PREFIX = 'jobpilot-resumes'
-
-function storageKey(): string {
-  const userId = useAuthStore.getState().user?.id ?? 'guest'
-  return `${STORAGE_PREFIX}:${userId}`
-}
-
-function loadResumes(): Resume[] {
-  try {
-    const raw = localStorage.getItem(storageKey())
-    return raw ? (JSON.parse(raw) as Resume[]) : []
-  } catch {
-    return []
-  }
-}
-
-function saveResumes(resumes: Resume[]) {
-  localStorage.setItem(storageKey(), JSON.stringify(resumes))
-}
-
-let userResumes: Resume[] = loadResumes()
-
-function syncFromStorage() {
-  userResumes = loadResumes()
+export function setCachedResumeCount(count: number): void {
+  cachedResumeCount = count
 }
 
 export function getUserResumeCount(): number {
-  syncFromStorage()
-  return userResumes.length
-}
-
-export function resetResumesData() {
-  userResumes = []
-  saveResumes([])
-}
-
-export function seedResumesData() {
-  syncFromStorage()
-  if (userResumes.length === 0) {
-    userResumes = [...mockResumes]
-    saveResumes(userResumes)
-  }
+  return cachedResumeCount
 }
 
 export const resumesApi = {
-  getAll: () => {
-    syncFromStorage()
-    if (isSubscribed() && userResumes.length === 0) {
-      userResumes = [...mockResumes]
-      saveResumes(userResumes)
-    }
-    return mockFetch<Resume[]>([...userResumes])
-  },
-
-  setPrimary: (id: string) => {
-    syncFromStorage()
-    userResumes = userResumes.map((r) => ({ ...r, isPrimary: r.id === id }))
-    saveResumes(userResumes)
-    return mockFetch([...userResumes])
+  getAll: async () => {
+    const resumes = await apiFetch<Resume[]>('/resumes')
+    setCachedResumeCount(resumes.length)
+    return resumes
   },
 
   upload: async (file: File) => {
-    syncFromStorage()
-    await new Promise((r) => setTimeout(r, 800))
-    const newResume: Resume = {
-      id: `resume-${Date.now()}`,
-      name: file.name.replace(/\.[^/.]+$/, ''),
-      fileName: file.name,
-      skillsExtracted: DEFAULT_EXTRACTED_SKILLS,
-      uploadDate: new Date().toISOString(),
-      isPrimary: userResumes.length === 0,
-      fileSize: `${Math.round(file.size / 1024)} KB`,
+    const resume = await apiUpload<Resume>('/resumes/upload', file)
+    setCachedResumeCount(1)
+    return resume
+  },
+
+  delete: async (id: string) => {
+    await apiFetch<null>(`/resumes/${id}`, { method: 'DELETE' })
+    setCachedResumeCount(0)
+  },
+
+  openFile: async (resume: Resume) => {
+    const token = sessionToken.get()
+    const res = await fetch(resume.url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
+    })
+
+    if (!res.ok) {
+      throw new Error('Could not open resume file')
     }
-    userResumes = [...userResumes, newResume]
-    saveResumes(userResumes)
-    return mockFetch(newResume, { delay: 200 })
+
+    const blob = await res.blob()
+    const objectUrl = URL.createObjectURL(blob)
+    window.open(objectUrl, '_blank', 'noopener,noreferrer')
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
   },
 }

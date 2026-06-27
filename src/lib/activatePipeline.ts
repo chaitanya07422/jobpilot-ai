@@ -1,4 +1,3 @@
-import { seedResumesData } from '@/api/resumes.api'
 import { resetApplicationsData } from '@/api/applications.api'
 import { useAuthStore } from '@/store/authStore'
 import type { PlanId, Subscription } from '@/types/subscription.types'
@@ -17,7 +16,6 @@ export function buildSubscription(planId: PlanId = 'pro'): Subscription {
 
 export function activatePipeline(subscription: Subscription) {
   useAuthStore.getState().activateSubscription(subscription)
-  seedResumesData()
   resetApplicationsData()
 }
 
