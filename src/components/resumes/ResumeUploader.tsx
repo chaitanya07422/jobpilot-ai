@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/Button'
 interface ResumeUploaderProps {
   onUpload: (file: File) => void
   loading?: boolean
+  loadingLabel?: string
 }
 
-export function ResumeUploader({ onUpload, loading }: ResumeUploaderProps) {
+export function ResumeUploader({ onUpload, loading, loadingLabel }: ResumeUploaderProps) {
   const [dragOver, setDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -67,7 +68,7 @@ export function ResumeUploader({ onUpload, loading }: ResumeUploaderProps) {
           type="button"
           onClick={() => inputRef.current?.click()}
         >
-          Browse Files
+          {loading ? (loadingLabel ?? 'Uploading...') : 'Browse Files'}
         </Button>
       </div>
     </div>

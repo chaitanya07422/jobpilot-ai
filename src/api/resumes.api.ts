@@ -1,6 +1,8 @@
 import { apiFetch, apiUpload } from '@/api/client'
 import { sessionToken } from '@/lib/session-token'
-import type { Resume } from '@/types/resume.types'
+import type { Resume, ResumeProfile, UpdateResumeProfilePayload } from '@/types/resume.types'
+
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 let cachedResumeCount = 0
 
@@ -12,12 +14,27 @@ export function getUserResumeCount(): number {
   return cachedResumeCount
 }
 
+export function buildResumeFileUrl(resumeId: string): string {
+  return `${API_URL}/api/v1/resumes/${resumeId}/file`
+}
+
 export const resumesApi = {
   getAll: async () => {
     const resumes = await apiFetch<Resume[]>('/resumes')
     setCachedResumeCount(resumes.length)
     return resumes
   },
+
+  getProfile: () => apiFetch<ResumeProfile>('/resumes/profile'),
+
+  updateProfile: (payload: UpdateResumeProfilePayload) =>
+    apiFetch<ResumeProfile>('/resumes/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+
+  confirmProfile: () =>
+    apiFetch<ResumeProfile>('/resumes/profile/confirm', { method: 'POST' }),
 
   upload: async (file: File) => {
     const resume = await apiUpload<Resume>('/resumes/upload', file)
@@ -32,7 +49,8 @@ export const resumesApi = {
 
   openFile: async (resume: Resume) => {
     const token = sessionToken.get()
-    const res = await fetch(resume.url, {
+    const url = resume.url.startsWith('http') ? resume.url : buildResumeFileUrl(resume.id)
+    const res = await fetch(url, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       credentials: 'include',
     })

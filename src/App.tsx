@@ -16,6 +16,7 @@ import JobDetail from '@/pages/JobDetail'
 import Applications from '@/pages/Applications'
 import Approvals from '@/pages/Approvals'
 import Resumes from '@/pages/Resumes'
+import ResumeProfile from '@/pages/ResumeProfile'
 import Insights from '@/pages/Insights'
 import Activity from '@/pages/Activity'
 import Settings from '@/pages/Settings'
@@ -117,6 +118,7 @@ export default function App() {
             <Route path="/applications" element={<Applications />} />
             <Route path="/approvals" element={<Approvals />} />
             <Route path="/resumes" element={<Resumes />} />
+            <Route path="/resumes/profile" element={<ResumeProfile />} />
             <Route path="/insights" element={<Insights />} />
             <Route path="/activity" element={<Activity />} />
             <Route path="/settings" element={<Settings />} />

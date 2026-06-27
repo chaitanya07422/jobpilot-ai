@@ -1,7 +1,16 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Calendar, ExternalLink, FileText, Trash2, Upload } from 'lucide-react'
-import { resumesApi } from '@/api/resumes.api'
+import {
+  Calendar,
+  ExternalLink,
+  FileText,
+  Trash2,
+  Upload,
+  UserPen,
+  AlertCircle,
+} from 'lucide-react'
+import { resumesApi, setCachedResumeCount } from '@/api/resumes.api'
 import { useAuthStore } from '@/store/authStore'
 import { ResumeUploader } from '@/components/resumes/ResumeUploader'
 import { ResumeJobSuggestions } from '@/components/jobs/ResumeJobSuggestions'
@@ -12,9 +21,15 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { formatDate } from '@/lib/utils'
+import {
+  extractionStatusLabel,
+  extractionStatusVariant,
+} from '@/lib/resume-profile'
 
 export default function Resumes() {
+  const navigate = useNavigate()
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const queryClient = useQueryClient()
   const isSubscribed = useAuthStore((s) => s.subscription?.active === true)
 
@@ -26,18 +41,30 @@ export default function Resumes() {
   const uploadMutation = useMutation({
     mutationFn: resumesApi.upload,
     onSuccess: (uploaded) => {
+      setUploadError(null)
       queryClient.setQueryData(['resumes'], [uploaded])
       queryClient.invalidateQueries({ queryKey: ['resumes'] })
+      queryClient.invalidateQueries({ queryKey: ['resume-profile'] })
       queryClient.invalidateQueries({ queryKey: ['job-suggestions'] })
       queryClient.invalidateQueries({ queryKey: ['job-suggestions-summary'] })
       setUploadOpen(false)
+      if (uploaded.profile || uploaded.extractionStatus) {
+        navigate('/resumes/profile')
+      }
+    },
+    onError: (error: Error) => {
+      setUploadError(error.message || 'Upload failed')
     },
   })
 
   const deleteMutation = useMutation({
     mutationFn: resumesApi.delete,
     onSuccess: () => {
+      setCachedResumeCount(0)
+      queryClient.setQueryData(['resumes'], [])
+      queryClient.removeQueries({ queryKey: ['resume-profile'] })
       queryClient.invalidateQueries({ queryKey: ['resumes'] })
+      queryClient.invalidateQueries({ queryKey: ['resume-profile'] })
       queryClient.invalidateQueries({ queryKey: ['job-suggestions'] })
       queryClient.invalidateQueries({ queryKey: ['job-suggestions-summary'] })
     },
@@ -45,6 +72,9 @@ export default function Resumes() {
 
   const resume = data?.[0]
   const hasResume = !!resume
+  const profileStatus = resume?.profile?.extractionStatus ?? resume?.extractionStatus
+  const needsReview = profileStatus === 'ready_for_review'
+  const extractionFailed = profileStatus === 'failed'
 
   return (
     <div className="space-y-6">
@@ -84,12 +114,13 @@ export default function Resumes() {
           <EmptyState
             icon={FileText}
             title="No resume uploaded"
-            description="Upload a PDF resume (max 5MB). We'll store it securely and use it for job matching."
+            description="Upload a PDF resume (max 5MB). We'll extract your profile and let you review it before matching."
             action={{ label: 'Upload Resume', onClick: () => setUploadOpen(true) }}
           />
           <ResumeUploader
             onUpload={(file) => uploadMutation.mutate(file)}
             loading={uploadMutation.isPending}
+            loadingLabel="Uploading and extracting profile..."
           />
         </>
       )}
@@ -106,8 +137,31 @@ export default function Resumes() {
                   <p className="text-xs text-muted mt-0.5">{resume.fileName}</p>
                 </div>
               </div>
-              <Badge variant="cyan">Active</Badge>
+              <div className="flex flex-col items-end gap-2">
+                <Badge variant="cyan">Active</Badge>
+                {profileStatus && (
+                  <Badge variant={extractionStatusVariant(profileStatus)}>
+                    {extractionStatusLabel(profileStatus)}
+                  </Badge>
+                )}
+              </div>
             </div>
+
+            {extractionFailed && resume.extractionError && (
+              <div className="mt-4 flex items-start gap-2 rounded-lg border border-red/20 bg-red/5 px-3 py-2">
+                <AlertCircle className="h-4 w-4 text-red shrink-0 mt-0.5" />
+                <p className="text-xs text-muted">{resume.extractionError}</p>
+              </div>
+            )}
+
+            {!profileStatus && (
+              <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber/20 bg-amber/5 px-3 py-2">
+                <AlertCircle className="h-4 w-4 text-amber shrink-0 mt-0.5" />
+                <p className="text-xs text-muted">
+                  Profile not extracted yet. Replace the resume to run extraction again.
+                </p>
+              </div>
+            )}
 
             {resume.skillsExtracted.length > 0 && (
               <div className="mt-4">
@@ -130,20 +184,29 @@ export default function Resumes() {
               <span>{resume.fileSize}</span>
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-4 w-full"
-              onClick={() => resumesApi.openFile(resume)}
-            >
-              <ExternalLink className="h-4 w-4" /> View PDF
-            </Button>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => resumesApi.openFile(resume)}
+              >
+                <ExternalLink className="h-4 w-4" /> View PDF
+              </Button>
+              <Button
+                size="sm"
+                variant={needsReview ? 'default' : 'outline'}
+                onClick={() => navigate('/resumes/profile')}
+              >
+                <UserPen className="h-4 w-4" />
+                {needsReview ? 'Review profile' : 'Edit profile'}
+              </Button>
+            </div>
           </Card>
 
           {uploadMutation.isPending && (
             <Card className="border-cyan/20 bg-cyan/5">
               <p className="text-sm text-center text-muted animate-pulse">
-                Uploading resume...
+                Uploading and extracting profile — this may take up to a minute...
               </p>
             </Card>
           )}
@@ -160,14 +223,21 @@ export default function Resumes() {
 
       <Modal
         open={uploadOpen}
-        onClose={() => setUploadOpen(false)}
+        onClose={() => !uploadMutation.isPending && setUploadOpen(false)}
         title={hasResume ? 'Replace Resume' : 'Upload Resume'}
-        description="PDF only, max 5MB. Uploading again replaces your current resume."
+        description="PDF only, max 5MB. Extraction runs during upload — please wait for it to finish."
       >
         <ResumeUploader
-          onUpload={(file) => uploadMutation.mutate(file)}
+          onUpload={(file) => {
+            setUploadError(null)
+            uploadMutation.mutate(file)
+          }}
           loading={uploadMutation.isPending}
+          loadingLabel="Uploading and extracting profile..."
         />
+        {uploadError && (
+          <p className="mt-3 text-sm text-red text-center">{uploadError}</p>
+        )}
       </Modal>
     </div>
   )
