@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { JobPilotLogo } from '@/components/brand/JobPilotLogo'
+import { Zap } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { Loader } from '@/components/ui/Loader'
 
@@ -26,7 +26,7 @@ export function AuthBootstrap({ children }: { children: React.ReactNode }) {
   if (!hydrated || !authReady) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
-        <JobPilotLogo className="max-w-[180px]" />
+        <Zap className="h-8 w-8 text-cyan" />
         <Loader size="md" label="Loading session..." />
       </div>
     )

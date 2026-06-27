@@ -8,6 +8,7 @@ import {
   Activity,
   Settings,
   CheckCircle2,
+  Zap,
   Menu,
   X,
   Send,
@@ -16,7 +17,6 @@ import {
   CreditCard,
   Sparkles,
 } from 'lucide-react'
-import { JobPilotLogo } from '@/components/brand/JobPilotLogo'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
@@ -63,7 +63,15 @@ export function Sidebar() {
         )}
       >
         <div className="flex h-16 items-center justify-between border-b border-border px-5">
-          <JobPilotLogo className="max-w-[132px]" />
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan/10 border border-cyan/20">
+              <Zap className="h-4 w-4 text-cyan" />
+            </div>
+            <div>
+              <p className="font-heading text-sm font-bold leading-none">JobPilot AI</p>
+              <p className="text-[10px] text-muted mt-0.5">Job Automation</p>
+            </div>
+          </div>
           <button
             className="lg:hidden text-muted hover:text-foreground"
             onClick={() => setSidebarOpen(false)}

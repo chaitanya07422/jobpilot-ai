@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { User, Mail, Lock, ArrowRight } from 'lucide-react'
-import { JobPilotLogo } from '@/components/brand/JobPilotLogo'
+import { Zap, User, Mail, Lock, ArrowRight } from 'lucide-react'
 import { authApi } from '@/api/auth.api'
 import { ApiError } from '@/api/client'
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
@@ -67,7 +66,9 @@ export default function Register() {
     <AuthShell>
       <div className="w-full max-w-md animate-fade-in">
         <div className="text-center mb-8">
-          <JobPilotLogo className="mx-auto mb-6 max-w-[220px]" />
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-cyan/10 border border-cyan/20 mb-4">
+            <Zap className="h-6 w-6 text-cyan" />
+          </div>
           <h1 className="font-heading text-2xl font-bold">Create account</h1>
           <p className="text-sm text-muted mt-2">Start automating your job search</p>
         </div>
