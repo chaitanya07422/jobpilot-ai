@@ -21,6 +21,7 @@ interface ResumeProfileEditorProps {
   confirming?: boolean
   onSave: (payload: UpdateResumeProfilePayload) => void
   onConfirm: (payload: UpdateResumeProfilePayload) => void
+  onBack?: () => void
 }
 
 function emptyExperience(): ExperienceEntry {
@@ -120,6 +121,7 @@ export function ResumeProfileEditor({
   confirming,
   onSave,
   onConfirm,
+  onBack,
 }: ResumeProfileEditorProps) {
   const [form, setForm] = useState(() => profileToFormState(profile))
 
@@ -127,11 +129,18 @@ export function ResumeProfileEditor({
     setForm(profileToFormState(profile))
   }, [profile])
 
-  const isConfirmed = profile.extractionStatus === 'confirmed'
+  const isReadOnly = profile.isReadOnly
+  const canSave = profile.canSaveProfile
+  const canConfirm = profile.canConfirmProfile
+  const needsRetry = canConfirm && isReadOnly && !!profile.qdrantSyncError
+  const fieldClass = isReadOnly
+    ? `${inputClass} opacity-70 cursor-not-allowed`
+    : inputClass
   const payload = () => formStateToPayload(form)
 
   return (
-    <div className="space-y-6">
+    <>
+    <div className="space-y-6 pb-28">
       <Card>
         <CardHeader>
           <CardTitle>Summary</CardTitle>
@@ -141,8 +150,9 @@ export function ResumeProfileEditor({
           rows={4}
           value={form.summary}
           onChange={(e) => setForm((prev) => ({ ...prev, summary: e.target.value }))}
-          className={inputClass}
+          className={fieldClass}
           placeholder="Brief professional summary"
+          disabled={isReadOnly}
         />
       </Card>
 
@@ -163,7 +173,8 @@ export function ResumeProfileEditor({
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, totalYearsExperience: e.target.value }))
               }
-              className={inputClass}
+              className={fieldClass}
+              disabled={isReadOnly}
               placeholder="e.g. 4"
             />
           </div>
@@ -172,7 +183,8 @@ export function ResumeProfileEditor({
             <input
               value={form.skills}
               onChange={(e) => setForm((prev) => ({ ...prev, skills: e.target.value }))}
-              className={inputClass}
+              className={fieldClass}
+              disabled={isReadOnly}
               placeholder="System Design, Leadership"
             />
           </div>
@@ -181,7 +193,8 @@ export function ResumeProfileEditor({
             <input
               value={form.technologies}
               onChange={(e) => setForm((prev) => ({ ...prev, technologies: e.target.value }))}
-              className={inputClass}
+              className={fieldClass}
+              disabled={isReadOnly}
               placeholder="React, Node.js, PostgreSQL"
             />
           </div>
@@ -199,6 +212,7 @@ export function ResumeProfileEditor({
               type="button"
               variant="outline"
               size="sm"
+              disabled={isReadOnly}
               onClick={() =>
                 setForm((prev) => ({
                   ...prev,
@@ -245,7 +259,8 @@ export function ResumeProfileEditor({
                       ),
                     }))
                   }
-                  className={inputClass}
+                  className={fieldClass}
+              disabled={isReadOnly}
                   placeholder="Company"
                 />
                 <input
@@ -258,7 +273,8 @@ export function ResumeProfileEditor({
                       ),
                     }))
                   }
-                  className={inputClass}
+                  className={fieldClass}
+              disabled={isReadOnly}
                   placeholder="Role / title"
                 />
                 <input
@@ -271,7 +287,8 @@ export function ResumeProfileEditor({
                       ),
                     }))
                   }
-                  className={inputClass}
+                  className={fieldClass}
+              disabled={isReadOnly}
                   placeholder="Location"
                 />
                 <div className="grid grid-cols-2 gap-2">
@@ -285,7 +302,8 @@ export function ResumeProfileEditor({
                         ),
                       }))
                     }
-                    className={inputClass}
+                    className={fieldClass}
+              disabled={isReadOnly}
                     placeholder="Start"
                   />
                   <input
@@ -298,7 +316,8 @@ export function ResumeProfileEditor({
                         ),
                       }))
                     }
-                    className={inputClass}
+                    className={fieldClass}
+              disabled={isReadOnly}
                     placeholder="End"
                   />
                 </div>
@@ -316,7 +335,8 @@ export function ResumeProfileEditor({
                     ),
                   }))
                 }
-                className={inputClass}
+                className={fieldClass}
+              disabled={isReadOnly}
                 placeholder="Highlights (one per line)"
               />
               <input
@@ -331,7 +351,8 @@ export function ResumeProfileEditor({
                     ),
                   }))
                 }
-                className={inputClass}
+                className={fieldClass}
+              disabled={isReadOnly}
                 placeholder="Technologies used"
               />
             </div>
@@ -349,6 +370,7 @@ export function ResumeProfileEditor({
               type="button"
               variant="outline"
               size="sm"
+              disabled={isReadOnly}
               onClick={() =>
                 setForm((prev) => ({
                   ...prev,
@@ -377,7 +399,8 @@ export function ResumeProfileEditor({
                       ),
                     }))
                   }
-                  className={inputClass}
+                  className={fieldClass}
+              disabled={isReadOnly}
                   placeholder="Institution"
                 />
                 <input
@@ -390,7 +413,8 @@ export function ResumeProfileEditor({
                       ),
                     }))
                   }
-                  className={inputClass}
+                  className={fieldClass}
+              disabled={isReadOnly}
                   placeholder="Degree"
                 />
                 <input
@@ -403,7 +427,8 @@ export function ResumeProfileEditor({
                       ),
                     }))
                   }
-                  className={inputClass}
+                  className={fieldClass}
+              disabled={isReadOnly}
                   placeholder="Field of study"
                 />
                 <input
@@ -416,7 +441,8 @@ export function ResumeProfileEditor({
                       ),
                     }))
                   }
-                  className={inputClass}
+                  className={fieldClass}
+              disabled={isReadOnly}
                   placeholder="Grade / GPA"
                 />
               </div>
@@ -435,6 +461,7 @@ export function ResumeProfileEditor({
               type="button"
               variant="outline"
               size="sm"
+              disabled={isReadOnly}
               onClick={() =>
                 setForm((prev) => ({
                   ...prev,
@@ -462,7 +489,8 @@ export function ResumeProfileEditor({
                     ),
                   }))
                 }
-                className={inputClass}
+                className={fieldClass}
+              disabled={isReadOnly}
                 placeholder="Project name"
               />
               <textarea
@@ -476,7 +504,8 @@ export function ResumeProfileEditor({
                     ),
                   }))
                 }
-                className={inputClass}
+                className={fieldClass}
+              disabled={isReadOnly}
                 placeholder="Description"
               />
               <input
@@ -491,7 +520,8 @@ export function ResumeProfileEditor({
                     ),
                   }))
                 }
-                className={inputClass}
+                className={fieldClass}
+              disabled={isReadOnly}
                 placeholder="Technologies"
               />
             </div>
@@ -511,7 +541,8 @@ export function ResumeProfileEditor({
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, certifications: e.target.value }))
               }
-              className={inputClass}
+              className={fieldClass}
+              disabled={isReadOnly}
               placeholder="AWS Solutions Architect, CKA"
             />
           </div>
@@ -520,34 +551,45 @@ export function ResumeProfileEditor({
             <input
               value={form.languages}
               onChange={(e) => setForm((prev) => ({ ...prev, languages: e.target.value }))}
-              className={inputClass}
+              className={fieldClass}
+              disabled={isReadOnly}
               placeholder="English, Hindi"
             />
           </div>
         </div>
       </Card>
+    </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 sticky bottom-4 bg-background/90 backdrop-blur-sm p-4 rounded-xl border border-border">
-        <Button
-          variant="outline"
-          loading={saving}
-          disabled={confirming}
-          onClick={() => onSave(payload())}
-          className="flex-1"
-        >
-          Save changes
-        </Button>
-        {!isConfirmed && (
+    <div className="fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background/95 backdrop-blur-md lg:pl-64">
+      <div className="mx-auto flex max-w-3xl flex-col gap-3 p-4 sm:flex-row lg:px-6">
+        {profile.canEditProfile && (
+          <Button
+            variant="outline"
+            loading={saving}
+            disabled={confirming || !canSave}
+            onClick={() => onSave(payload())}
+            className="flex-1"
+          >
+            Save changes
+          </Button>
+        )}
+        {canConfirm && (
           <Button
             loading={confirming}
             disabled={saving}
             onClick={() => onConfirm(payload())}
             className="flex-1"
           >
-            Confirm profile
+            {needsRetry ? 'Try again' : 'Confirm profile'}
+          </Button>
+        )}
+        {isReadOnly && !canConfirm && onBack && (
+          <Button variant="outline" onClick={onBack} className="flex-1">
+            Back to resume
           </Button>
         )}
       </div>
     </div>
+    </>
   )
 }

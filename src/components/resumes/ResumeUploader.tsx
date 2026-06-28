@@ -7,9 +7,15 @@ interface ResumeUploaderProps {
   onUpload: (file: File) => void
   loading?: boolean
   loadingLabel?: string
+  disabled?: boolean
 }
 
-export function ResumeUploader({ onUpload, loading, loadingLabel }: ResumeUploaderProps) {
+export function ResumeUploader({
+  onUpload,
+  loading,
+  loadingLabel,
+  disabled,
+}: ResumeUploaderProps) {
   const [dragOver, setDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -51,7 +57,7 @@ export function ResumeUploader({ onUpload, loading, loadingLabel }: ResumeUpload
           const file = e.target.files?.[0]
           if (file) handleFile(file)
         }}
-        disabled={loading}
+        disabled={loading || disabled}
       />
       <div className="flex flex-col items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-panel-secondary border border-border">
@@ -65,6 +71,7 @@ export function ResumeUploader({ onUpload, loading, loadingLabel }: ResumeUpload
           variant="outline"
           size="sm"
           loading={loading}
+          disabled={disabled}
           type="button"
           onClick={() => inputRef.current?.click()}
         >

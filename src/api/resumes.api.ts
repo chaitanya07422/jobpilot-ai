@@ -1,6 +1,6 @@
 import { apiFetch, apiUpload } from '@/api/client'
 import { sessionToken } from '@/lib/session-token'
-import type { Resume, ResumeProfile, UpdateResumeProfilePayload } from '@/types/resume.types'
+import type { Resume, ResumeProfile, ResumeQuota, UpdateResumeProfilePayload } from '@/types/resume.types'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
@@ -27,14 +27,19 @@ export const resumesApi = {
 
   getProfile: () => apiFetch<ResumeProfile>('/resumes/profile'),
 
+  getQuota: () => apiFetch<ResumeQuota>('/resumes/quota'),
+
   updateProfile: (payload: UpdateResumeProfilePayload) =>
     apiFetch<ResumeProfile>('/resumes/profile', {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
 
-  confirmProfile: () =>
-    apiFetch<ResumeProfile>('/resumes/profile/confirm', { method: 'POST' }),
+  confirmProfile: (payload?: UpdateResumeProfilePayload) =>
+    apiFetch<ResumeProfile>('/resumes/profile/confirm', {
+      method: 'POST',
+      body: JSON.stringify(payload ?? {}),
+    }),
 
   upload: async (file: File) => {
     const resume = await apiUpload<Resume>('/resumes/upload', file)

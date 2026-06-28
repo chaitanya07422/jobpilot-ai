@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react'
+import { AlertCircle, ArrowLeft, CheckCircle2, Info } from 'lucide-react'
 import { resumesApi } from '@/api/resumes.api'
 import { ResumeProfileEditor } from '@/components/resumes/ResumeProfileEditor'
 import { PageLoader } from '@/components/ui/Loader'
@@ -28,6 +28,13 @@ export default function ResumeProfile() {
     queryFn: resumesApi.getProfile,
   })
 
+  const {
+    data: quota,
+  } = useQuery({
+    queryKey: ['resume-quota'],
+    queryFn: resumesApi.getQuota,
+  })
+
   const saveMutation = useMutation({
     mutationFn: resumesApi.updateProfile,
     onSuccess: (updated) => {
@@ -35,18 +42,22 @@ export default function ResumeProfile() {
       queryClient.invalidateQueries({ queryKey: ['resumes'] })
       navigate('/resumes')
     },
+    onError: (error: Error) => {
+      window.alert(error.message || 'Could not save profile')
+    },
   })
 
   const confirmMutation = useMutation({
-    mutationFn: async (payload: UpdateResumeProfilePayload) => {
-      await resumesApi.updateProfile(payload)
-      return resumesApi.confirmProfile()
-    },
+    mutationFn: (payload: UpdateResumeProfilePayload) =>
+      resumesApi.confirmProfile(payload),
     onSuccess: (updated) => {
       queryClient.setQueryData(['resume-profile'], updated)
       queryClient.invalidateQueries({ queryKey: ['resumes'] })
       queryClient.invalidateQueries({ queryKey: ['job-suggestions'] })
       navigate('/resumes')
+    },
+    onError: (error: Error) => {
+      window.alert(error.message || 'Could not confirm profile')
     },
   })
 
@@ -77,14 +88,66 @@ export default function ResumeProfile() {
         )}
       </div>
 
-      {profile?.extractionStatus === 'confirmed' && (
+      {profile && profile.canEditProfile && profile.extractionStatus === 'confirmed' && (
+        <Card className="border-cyan/30 bg-cyan/5">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-cyan shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Profile confirmed — edits still available</p>
+              <p className="text-xs text-muted">
+                You can save changes{' '}
+                <strong>
+                  {profile.editsRemaining} more time{profile.editsRemaining === 1 ? '' : 's'}
+                </strong>
+                . Each save updates your matching profile in Qdrant.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {profile && profile.canEditProfile && profile.extractionStatus !== 'confirmed' && (
+        <Card className="border-cyan/30 bg-cyan/5">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-cyan shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Review your profile</p>
+              <p className="text-xs text-muted">
+                You can save changes{' '}
+                <strong>
+                  {profile.editsRemaining} more time{profile.editsRemaining === 1 ? '' : 's'}
+                </strong>
+                . After you confirm, your profile is locked
+                {quota?.uploadsRemaining != null
+                  ? ` — upload a new resume to change it (${quota.uploadsRemaining} upload${quota.uploadsRemaining === 1 ? '' : 's'} left).`
+                  : '.'}
+              </p>
+              {!profile.canSaveProfile && (
+                <p className="text-xs text-amber">
+                  No saves left. Confirm now, or upload a new resume to start over.
+                </p>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {profile?.isReadOnly && profile.extractionStatus === 'confirmed' && (
         <Card className="border-green/30 bg-green/5">
           <div className="flex items-start gap-3">
             <CheckCircle2 className="h-5 w-5 text-green shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium">Profile confirmed</p>
               <p className="text-xs text-muted mt-1">
-                You can still edit fields and save — re-confirm after major changes.
+                {profile.qdrantSyncedAt
+                  ? "You're ready for job matching."
+                  : profile.qdrantSyncError
+                    ? "We couldn't finish setup. Try confirming again."
+                    : 'Your profile is confirmed.'}{' '}
+                To make changes, upload a new resume
+                {quota?.uploadsRemaining != null
+                  ? ` (${quota.uploadsRemaining} upload${quota.uploadsRemaining === 1 ? '' : 's'} left).`
+                  : '.'}
               </p>
             </div>
           </div>
@@ -121,6 +184,7 @@ export default function ResumeProfile() {
           confirming={confirmMutation.isPending}
           onSave={handleSave}
           onConfirm={handleConfirm}
+          onBack={() => navigate('/resumes')}
         />
       )}
     </div>

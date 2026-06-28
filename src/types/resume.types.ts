@@ -51,6 +51,24 @@ export interface ResumeProfile {
   languages: string[]
   otherSections: OtherSectionEntry[]
   profileConfirmedAt?: string
+  profileEditCount: number
+  profileEditLimit: number
+  editsRemaining: number
+  canEditProfile: boolean
+  canSaveProfile: boolean
+  canConfirmProfile: boolean
+  isReadOnly: boolean
+  qdrantSyncedAt?: string
+  qdrantSyncError?: string
+  embeddingModel?: string
+}
+
+export interface ResumeQuota {
+  resumeUploadCount: number
+  resumeUploadLimit: number | null
+  uploadsRemaining: number | null
+  canUpload: boolean
+  canRetryAfterFailure?: boolean
 }
 
 export type UpdateResumeProfilePayload = Partial<

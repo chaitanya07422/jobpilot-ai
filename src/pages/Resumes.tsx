@@ -38,6 +38,11 @@ export default function Resumes() {
     queryFn: resumesApi.getAll,
   })
 
+  const { data: quota } = useQuery({
+    queryKey: ['resume-quota'],
+    queryFn: resumesApi.getQuota,
+  })
+
   const uploadMutation = useMutation({
     mutationFn: resumesApi.upload,
     onSuccess: (uploaded) => {
@@ -45,6 +50,7 @@ export default function Resumes() {
       queryClient.setQueryData(['resumes'], [uploaded])
       queryClient.invalidateQueries({ queryKey: ['resumes'] })
       queryClient.invalidateQueries({ queryKey: ['resume-profile'] })
+      queryClient.invalidateQueries({ queryKey: ['resume-quota'] })
       queryClient.invalidateQueries({ queryKey: ['job-suggestions'] })
       queryClient.invalidateQueries({ queryKey: ['job-suggestions-summary'] })
       setUploadOpen(false)
@@ -67,6 +73,7 @@ export default function Resumes() {
       queryClient.invalidateQueries({ queryKey: ['resume-profile'] })
       queryClient.invalidateQueries({ queryKey: ['job-suggestions'] })
       queryClient.invalidateQueries({ queryKey: ['job-suggestions-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['resume-quota'] })
     },
   })
 
@@ -75,6 +82,12 @@ export default function Resumes() {
   const profileStatus = resume?.profile?.extractionStatus ?? resume?.extractionStatus
   const needsReview = profileStatus === 'ready_for_review'
   const extractionFailed = profileStatus === 'failed'
+  const canReplace = quota?.canUpload ?? false
+  const profileButtonLabel = resume?.profile?.canEditProfile
+    ? needsReview
+      ? 'Review profile'
+      : 'Edit profile'
+    : 'View profile'
 
   return (
     <div className="space-y-6">
@@ -86,10 +99,23 @@ export default function Resumes() {
               ? 'One resume per account — upload a new file to replace it'
               : 'Upload a PDF resume to get started'}
           </p>
+          {quota && (
+            <p className="text-xs text-muted mt-1">
+              {extractionFailed
+                ? 'Last upload failed — you can try again'
+                : quota.uploadsRemaining == null
+                  ? 'Unlimited uploads on your plan'
+                  : `${quota.uploadsRemaining} resume upload${quota.uploadsRemaining === 1 ? '' : 's'} left`}
+            </p>
+          )}
         </div>
         {hasResume ? (
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setUploadOpen(true)}>
+            <Button
+              variant="outline"
+              onClick={() => setUploadOpen(true)}
+              disabled={!canReplace}
+            >
               <Upload className="h-4 w-4" /> Replace
             </Button>
             <Button
@@ -101,7 +127,7 @@ export default function Resumes() {
             </Button>
           </div>
         ) : (
-          <Button onClick={() => setUploadOpen(true)}>
+          <Button onClick={() => setUploadOpen(true)} disabled={quota != null && !canReplace}>
             <Upload className="h-4 w-4" /> Upload Resume
           </Button>
         )}
@@ -198,7 +224,7 @@ export default function Resumes() {
                 onClick={() => navigate('/resumes/profile')}
               >
                 <UserPen className="h-4 w-4" />
-                {needsReview ? 'Review profile' : 'Edit profile'}
+                {profileButtonLabel}
               </Button>
             </div>
           </Card>
@@ -225,8 +251,19 @@ export default function Resumes() {
         open={uploadOpen}
         onClose={() => !uploadMutation.isPending && setUploadOpen(false)}
         title={hasResume ? 'Replace Resume' : 'Upload Resume'}
-        description="PDF only, max 5MB. Extraction runs during upload — please wait for it to finish."
+        description={
+          !canReplace
+            ? "You've used all your resume uploads. Upgrade your plan to upload more."
+            : extractionFailed
+              ? 'PDF only, max 5MB. Your last upload failed — try again at no extra cost.'
+              : 'PDF only, max 5MB. Uploading a new file replaces your current resume.'
+        }
       >
+        {quota && quota.uploadsRemaining != null && quota.uploadsRemaining > 0 && !extractionFailed && (
+          <p className="mb-3 text-xs text-muted text-center">
+            {quota.uploadsRemaining} upload{quota.uploadsRemaining === 1 ? '' : 's'} remaining.
+          </p>
+        )}
         <ResumeUploader
           onUpload={(file) => {
             setUploadError(null)
@@ -234,6 +271,7 @@ export default function Resumes() {
           }}
           loading={uploadMutation.isPending}
           loadingLabel="Uploading and extracting profile..."
+          disabled={!canReplace}
         />
         {uploadError && (
           <p className="mt-3 text-sm text-red text-center">{uploadError}</p>
